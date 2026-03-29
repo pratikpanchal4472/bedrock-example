@@ -70,8 +70,8 @@ A production-grade AI agent for **ShopEasy** â€” an Indian e-commerce platform â
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/bedrock-agents-poc
-cd bedrock-agents-poc
+git clone https://github.com/pratikpanchal4472/bedrock-example
+cd bedrock-example
 
 # Install Python dependencies
 pip install -r requirements.txt
