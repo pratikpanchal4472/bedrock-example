@@ -74,7 +74,9 @@ git clone https://github.com/pratikpanchal4472/bedrock-example
 cd bedrock-example
 
 # Install Python dependencies
-pip install -r requirements.txt
+uv venv --python python3.12
+source .venv/bin/activate
+uv pip install -r requirements.txt
 
 # Deploy infrastructure (Lambda + IAM)
 cd infrastructure/sam
