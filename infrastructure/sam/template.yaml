@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: >
+  ShopEasy Order Tools — Lambda function for Bedrock Agent Action Groups
+  Deploys the Lambda function and IAM role needed for Phase 3 onwards.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+
+Resources:
+
+  # ─── Lambda Function ───────────────────────────────────────────────────────
+  ShopEasyOrderToolsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "shopease-order-tools-${Environment}"
+      Handler: lambda_handler.lambda_handler
+      CodeUri: ../../phases/phase3_bedrock_agent/
+      Description: Order lookup tools for ShopEasy Bedrock Agent
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Tags:
+        Project: bedrock-agents-poc
+        Phase: phase3
+
+  # ─── Lambda IAM Role ───────────────────────────────────────────────────────
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "shopease-lambda-role-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Project
+          Value: bedrock-agents-poc
+
+  # ─── Resource Policy: allow Bedrock to invoke Lambda ──────────────────────
+  LambdaBedrockPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ShopEasyOrderToolsFunction
+      Action: lambda:InvokeFunction
+      Principal: bedrock.amazonaws.com
+
+  # ─── Bedrock Agent Execution Role ─────────────────────────────────────────
+  BedrockAgentExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "shopease-bedrock-agent-role-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: BedrockAgentPermissions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt ShopEasyOrderToolsFunction.Arn
+              - Effect: Allow
+                Action:
+                  - bedrock:Retrieve
+                  - bedrock:RetrieveAndGenerate
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - bedrock:GetAgentMemory
+                  - bedrock:DeleteAgentMemory
+                Resource: "*"
+      Tags:
+        - Key: Project
+          Value: bedrock-agents-poc
+
+Outputs:
+  LambdaFunctionName:
+    Description: Lambda function name to use in Action Group configuration
+    Value: !Ref ShopEasyOrderToolsFunction
+
+  LambdaFunctionArn:
+    Description: Lambda function ARN
+    Value: !GetAtt ShopEasyOrderToolsFunction.Arn
+
+  BedrockAgentRoleArn:
+    Description: IAM role ARN to use when creating the Bedrock Agent
+    Value: !GetAtt BedrockAgentExecutionRole.Arn
